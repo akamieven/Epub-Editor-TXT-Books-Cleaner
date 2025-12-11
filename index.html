@@ -7,9 +7,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-        /* (Style remains unchanged - as requested) */
         :root { --primary: #10b981; /* لون أخضر */ --bg: #f3f4f6; --card: #ffffff; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: #1f2937; margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: #1f2937; margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 10vh; }
         .container { 
             background-color: var(--card); 
             padding: 2.5rem; 
@@ -86,13 +85,18 @@
         .success { background-color: #d1fae5; color: #065f46; border-color: #34d399; }
         .error { background-color: #fee2e2; color: #991b1b; border-color: #f87171; }
         .info { font-size: 0.9rem; color: #6b7280; margin-top: -5px; margin-bottom: 10px; padding: 5px 0; }
+        /* أنماط المعاينة */
+        #fontPreviewTextAr, #fontPreviewTextEn {
+            /* الخط الأساسي للمعاينة قبل التحميل */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>📚محرر epub</h1>
-    <p class="info" style="text-align: center; font-size: 1rem; color: var(--primary);">أداة لتعديل بيانات، غلاف، وخطوط أي كتاب EPUB.</p>
+    <p class="info" style="text-align: center; font-size: 1rem; color: var(--primary);">أداة ذكية لتعديل بيانات، غلاف، وخطوط أي كتاب EPUB.</p>
 
     <div class="section">
         <label for="epubFile">1. اختر ملف الكتاب (EPUB) للتحرير</label>
@@ -114,7 +118,12 @@
 
     <div class="section">
         <label for="fontFile">4. إجبار الكتاب على استخدام خط خارجي (اختياري)</label>
-        <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2">
+        <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" onchange="previewFont()">
+        <div id="fontPreviewContainer" style="margin-top: 15px; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; text-align: center; display: none;">
+            <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 10px;">معاينة الخط المُختار:</p>
+            <p id="fontPreviewTextAr" style="font-size: 1.8rem; direction: rtl; margin-bottom: 10px;">«عندما تلعب لُعبة العروش، إمَّا أن تربح أو تموت»</p>
+            <p id="fontPreviewTextEn" style="font-size: 1.6rem; direction: ltr; font-weight: normal;">“When you play the game of thrones, you win or you die. There is no middle ground.”</p>
+        </div>
     </div>
 
     <button id="processBtn" onclick="processEpub()">✅ تنفيذ التعديلات وتوليد الكتاب الجديد</button>
@@ -150,6 +159,59 @@
             relativePath += toParts[j] + (j === toParts.length - 1 ? '' : '/');
         }
         return relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+    }
+
+    // --- الدالة الجديدة لمعاينة الخط (Live Preview) ---
+    function previewFont() {
+        const fontInput = document.getElementById('fontFile');
+        const container = document.getElementById('fontPreviewContainer');
+        const textAr = document.getElementById('fontPreviewTextAr');
+        const textEn = document.getElementById('fontPreviewTextEn');
+        
+        if (!fontInput.files[0]) {
+            container.style.display = 'none';
+            // إعادة تعيين الخطوط إلى الافتراضي عند إزالة الملف
+            textAr.style.fontFamily = 'inherit';
+            textEn.style.fontFamily = 'inherit';
+            // إزالة أي نمط (Style) تم إنشاؤه سابقاً
+            const oldStyle = document.getElementById('live-font-style');
+            if (oldStyle) oldStyle.remove();
+            return;
+        }
+
+        const fontFile = fontInput.files[0];
+        const fontUrl = URL.createObjectURL(fontFile);
+        const fontName = 'LivePreviewFont'; // اسم مؤقت لتطبيقه في CSS
+
+        container.style.display = 'block';
+
+        // 1. إزالة أي نمط (Style) تم إنشاؤه سابقاً
+        const oldStyle = document.getElementById('live-font-style');
+        if (oldStyle) oldStyle.remove();
+        
+        // 2. إنشاء قاعدة @font-face جديدة
+        const style = document.createElement('style');
+        style.id = 'live-font-style';
+        // إضافة تنسيقات الخطوط المدعومة
+        style.innerHTML = `
+            @font-face {
+                font-family: '${fontName}';
+                src: url('${fontUrl}') format('opentype'), 
+                     url('${fontUrl}') format('truetype'),
+                     url('${fontUrl}') format('woff'),
+                     url('${fontUrl}') format('woff2');
+                font-weight: normal;
+                font-style: normal;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 3. تطبيق الخط الجديد على نصوص المعاينة
+        textAr.style.fontFamily = `'${fontName}', sans-serif`;
+        textEn.style.fontFamily = `'${fontName}', sans-serif`;
+
+        // 4. تحرير الكائن المؤقت بعد تحميل الخط (للتنظيف)
+        setTimeout(() => URL.revokeObjectURL(fontUrl), 1000); 
     }
 
 
@@ -274,6 +336,7 @@
                 fontItem.setAttribute("media-type", fontFile.type || "font/opentype");
                 manifest.appendChild(fontItem);
 
+                // إعداد قاعدة @font-face الأساسية لاستخدامها في CSS و XHTML
                 const fontUrlRelative = getRelativePath(opfDir ? opfDir + '/temp.css' : 'temp.css', fontFullPath); 
                 const fontFaceRule = `@font-face { font-family: 'UserCustomFont'; src: url('${fontUrlRelative}') format('opentype'), url('${fontUrlRelative}') format('truetype'); font-weight: normal; font-style: normal; } body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, blockquote, dd, dt { font-family: 'UserCustomFont', sans-serif !important; line-height: 1.7 !important; }`;
 
@@ -287,6 +350,7 @@
                     }
                 }
                 
+                // الحقن في ملفات XHTML
                 const styleToInject = `<style type="text/css">${fontFaceRule}</style>`;
                 for (let xhtmlHref of xhtmlFiles) {
                     const fullXhtmlPath = opfDir ? opfDir + '/' + xhtmlHref : xhtmlHref;
@@ -305,7 +369,10 @@
                         
                         if (headEl) {
                             let finalStyle = styleToInject.replace(fontUrlRelative, getRelativePath(fullXhtmlPath, fontFullPath));
-                            headEl.insertAdjacentHTML('beforeend', finalStyle);
+                            // تجنب حقن النمط إذا كان موجوداً بالفعل (كإجراء احترازي)
+                            if (!headEl.innerHTML.includes('UserCustomFont')) {
+                                headEl.insertAdjacentHTML('beforeend', finalStyle);
+                            }
                         }
                         
                         if (bodyEl) {
@@ -321,21 +388,15 @@
             const newOpfContent = serializer.serializeToString(opfDoc);
             zip.file(opfPath, newOpfContent);
 
-            // 8. إنشاء الملف وتحميله (✨ التعديل الحاسم هنا)
-            
-            // نجبر JSZip على إخراج البيانات بنوع EPUB+ZIP MIME Type
+            // 8. إنشاء الملف وتحميله
             const content = await zip.generateAsync({
                 type:"blob",
-                mimeType: "application/epub+zip" // هذا هو المفتاح لمنع المتصفح من افتراض أنه zip عادي
+                mimeType: "application/epub+zip"
             });
             
             // 9. تنظيف الاسم النهائي
             let finalFileName = originalFileName;
-            
-            // تنظيف أي امتدادات متبقية قد تكون أضيفت سابقاً
             finalFileName = finalFileName.replace(/\.(epub|zip|rar|tar)$/gi, ''); 
-            
-            // إضافة الامتداد الصحيح
             finalFileName = finalFileName + '.epub';
             
             saveAs(content, finalFileName);
