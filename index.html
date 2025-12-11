@@ -117,7 +117,25 @@
     </div>
 
     <div class="section">
-        <label for="fontFile">4. إجبار الكتاب على استخدام خط خارجي (اختياري)</label>
+        <label>4. خيارات التنسيق الإضافية (اختياري)</label>
+        <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+            <div>
+                <input type="radio" id="dir_rtl" name="textDirection" value="rtl">
+                <label for="dir_rtl" style="display: inline; font-weight: normal;">فرض اتجاه (RTL) ⬅️</label>
+            </div>
+            <div>
+                <input type="radio" id="dir_ltr" name="textDirection" value="ltr">
+                <label for="dir_ltr" style="display: inline; font-weight: normal;">فرض اتجاه (LTR) ➡️</label>
+            </div>
+            <div>
+                <input type="radio" id="dir_none" name="textDirection" value="none" checked>
+                <label for="dir_none" style="display: inline; font-weight: normal;">لا تغيير</label>
+            </div>
+        </div>
+        <p class="info">تحديد اتجاه القراءة (RTL/LTR) سيتم تطبيقه على جميع ملفات المحتوى.</p>
+    </div>
+    <div class="section">
+        <label for="fontFile">5. إجبار الكتاب على استخدام خط خارجي (اختياري)</label>
         <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" onchange="previewFont()">
         <div id="fontPreviewContainer" style="margin-top: 15px; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; text-align: center; display: none;">
             <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 10px;">معاينة الخط المُختار:</p>
@@ -125,7 +143,6 @@
             <p id="fontPreviewTextEn" style="font-size: 1.6rem; direction: ltr; font-weight: normal;">“When you play the game of thrones, you win or you die. There is no middle ground.”</p>
         </div>
     </div>
-
     <button id="processBtn" onclick="processEpub()">✅ تنفيذ التعديلات وتوليد الكتاب الجديد</button>
     
     <div id="statusMsg" class="status"></div>
@@ -161,7 +178,7 @@
         return relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
     }
 
-    // --- الدالة الجديدة لمعاينة الخط (Live Preview) ---
+    // --- الدالة لمعاينة الخط (Live Preview) ---
     function previewFont() {
         const fontInput = document.getElementById('fontFile');
         const container = document.getElementById('fontPreviewContainer');
@@ -224,6 +241,8 @@
         const titleInput = document.getElementById('bookTitle').value;
         const authorInput = document.getElementById('bookAuthor').value;
         const languageInput = document.getElementById('bookLanguage').value.trim().toLowerCase();
+        // قراءة اتجاه النص الجديد
+        const textDirection = document.querySelector('input[name="textDirection"]:checked').value; 
 
         if (!epubInput.files[0]) {
             showStatus('الرجاء اختيار ملف EPUB أولاً!', 'error');
@@ -320,12 +339,20 @@
                 }
             }
 
-            // 6. تغيير الخط (الحقن المزدوج واللغة في المحتوى)
+            // 6. تغيير الخط وتطبيق الاتجاه في المحتوى
+            
+            // إعداد قاعدة الخط الأساسية (إذا تم إدخال خط)
+            let fontFaceRule = null;
+            let fontUrlRelative = null;
+            // المتغيرات مُعرَّفة بالخارج (Fix for fontFullPath is not defined)
+            let fontFile = null;
+            let fontFullPath = null; 
+            
             if (fontInput.files[0]) {
-                const fontFile = fontInput.files[0];
+                fontFile = fontInput.files[0]; 
                 const fontFileName = "custom-font." + fontFile.name.split('.').pop();
                 const fontsDir = opfDir ? opfDir + "/fonts/" : "fonts/";
-                const fontFullPath = fontsDir + fontFileName;
+                fontFullPath = fontsDir + fontFileName; 
                 
                 zip.file(fontFullPath, fontFile);
                 
@@ -336,10 +363,13 @@
                 fontItem.setAttribute("media-type", fontFile.type || "font/opentype");
                 manifest.appendChild(fontItem);
 
-                // إعداد قاعدة @font-face الأساسية لاستخدامها في CSS و XHTML
-                const fontUrlRelative = getRelativePath(opfDir ? opfDir + '/temp.css' : 'temp.css', fontFullPath); 
-                const fontFaceRule = `@font-face { font-family: 'UserCustomFont'; src: url('${fontUrlRelative}') format('opentype'), url('${fontUrlRelative}') format('truetype'); font-weight: normal; font-style: normal; } body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, blockquote, dd, dt { font-family: 'UserCustomFont', sans-serif !important; line-height: 1.7 !important; }`;
+                fontUrlRelative = getRelativePath(opfDir ? opfDir + '/temp.css' : 'temp.css', fontFullPath); 
+                
+                // **** التعديل لزيادة قوة النمط (إضافة المُحدّد الشامل *) ****
+                fontFaceRule = `@font-face { font-family: 'UserCustomFont'; src: url('${fontUrlRelative}') format('opentype'), url('${fontUrlRelative}') format('truetype'); font-weight: normal; font-style: normal; } *, body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, blockquote, dd, dt { font-family: 'UserCustomFont', sans-serif !important; line-height: 1.7 !important; }`;
+                // ******************************************************
 
+                // تطبيق قاعدة الخط على ملفات CSS
                 for (let cssHref of cssFiles) {
                     const fullCssPath = opfDir ? opfDir + '/' + cssHref : cssHref;
                     let cssContent = await zip.file(fullCssPath)?.async("text");
@@ -349,38 +379,61 @@
                         zip.file(fullCssPath, finalFontFaceRule + "\n" + cssContent);
                     }
                 }
-                
-                // الحقن في ملفات XHTML
-                const styleToInject = `<style type="text/css">${fontFaceRule}</style>`;
-                for (let xhtmlHref of xhtmlFiles) {
-                    const fullXhtmlPath = opfDir ? opfDir + '/' + xhtmlHref : xhtmlHref;
-                    let xhtmlContent = await zip.file(fullXhtmlPath)?.async("text");
+            }
+            
+            // الحقن في ملفات XHTML (للاتجاه والخط)
+            const fontStyleToInject = fontFaceRule ? `<style type="text/css">${fontFaceRule}</style>` : '';
+            
+            for (let xhtmlHref of xhtmlFiles) {
+                const fullXhtmlPath = opfDir ? opfDir + '/' + xhtmlHref : xhtmlHref;
+                let xhtmlContent = await zip.file(fullXhtmlPath)?.async("text");
 
-                    if (xhtmlContent) {
-                        const xhtmlDoc = parser.parseFromString(xhtmlContent, "application/xml");
-                        const htmlEl = xhtmlDoc.querySelector('html');
-                        const headEl = xhtmlDoc.querySelector('head');
-                        const bodyEl = xhtmlDoc.querySelector('body');
-                        
-                        if (htmlEl && languageInput) {
-                            htmlEl.setAttribute('lang', languageInput);
-                            htmlEl.setAttribute('xml:lang', languageInput);
-                        }
-                        
-                        if (headEl) {
-                            let finalStyle = styleToInject.replace(fontUrlRelative, getRelativePath(fullXhtmlPath, fontFullPath));
-                            // تجنب حقن النمط إذا كان موجوداً بالفعل (كإجراء احترازي)
-                            if (!headEl.innerHTML.includes('UserCustomFont')) {
-                                headEl.insertAdjacentHTML('beforeend', finalStyle);
-                            }
-                        }
-                        
-                        if (bodyEl) {
-                            bodyEl.setAttribute('style', "font-family: 'UserCustomFont', sans-serif !important;");
-                        }
-
-                        zip.file(fullXhtmlPath, serializer.serializeToString(xhtmlDoc));
+                if (xhtmlContent) {
+                    const xhtmlDoc = parser.parseFromString(xhtmlContent, "application/xml");
+                    const htmlEl = xhtmlDoc.querySelector('html');
+                    const headEl = xhtmlDoc.querySelector('head');
+                    const bodyEl = xhtmlDoc.querySelector('body');
+                    
+                    // تطبيق اللغة في وسم html
+                    if (htmlEl && languageInput) {
+                        htmlEl.setAttribute('lang', languageInput);
+                        htmlEl.setAttribute('xml:lang', languageInput);
                     }
+
+                    // تطبيق اتجاه النص (RTL/LTR)
+                    if (bodyEl && textDirection !== 'none') {
+                        const align = textDirection === 'rtl' ? 'justify' : 'left';
+                        
+                        // تطبيق السمة dir على body
+                        bodyEl.setAttribute('dir', textDirection);
+
+                        // حقن نمط لفرض الاتجاه والنص 
+                        const dirStyle = `<style type="text/css">
+                            body { direction: ${textDirection} !important; text-align: ${align} !important; }
+                        </style>`;
+
+                        // إضافة النمط في <head>
+                        if (headEl) {
+                            // إزالة أي نمط اتجاه قديم مدمج
+                            headEl.innerHTML = headEl.innerHTML.replace(/<style[^>]*>[\s\S]*direction:(rtl|ltr|inherit).*?<\/style>/gi, '');
+                            headEl.insertAdjacentHTML('beforeend', dirStyle);
+                        }
+                    }
+
+                    // تطبيق الخط (إذا تم اختياره)
+                    if (fontFaceRule && headEl && bodyEl) {
+                        // الآن، fontFullPath و fontUrlRelative مُعرَّفان (وليس undefined) لأن fontFaceRule حقيقية
+                        let finalFontStyle = fontStyleToInject.replace(fontUrlRelative, getRelativePath(fullXhtmlPath, fontFullPath));
+                        
+                        // تجنب حقن النمط إذا كان موجوداً بالفعل (كإجراء احترازي)
+                        if (!headEl.innerHTML.includes('UserCustomFont')) {
+                            headEl.insertAdjacentHTML('beforeend', finalFontStyle);
+                        }
+                        // تطبيق النمط على body (لضمان تجاوز التنسيقات الأصلية)
+                        bodyEl.setAttribute('style', "font-family: 'UserCustomFont', sans-serif !important;");
+                    }
+
+                    zip.file(fullXhtmlPath, serializer.serializeToString(xhtmlDoc));
                 }
             }
             
@@ -388,7 +441,7 @@
             const newOpfContent = serializer.serializeToString(opfDoc);
             zip.file(opfPath, newOpfContent);
 
-            // 8. إنشاء الملف وتحميله
+            // 8. إنشاء الملف وتحميله 
             const content = await zip.generateAsync({
                 type:"blob",
                 mimeType: "application/epub+zip"
