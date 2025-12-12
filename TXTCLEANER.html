@@ -13,14 +13,24 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Vazirmatn', sans-serif;
-            background-color: #f7f9fc; 
+                @font-face {
+            font-family: 'BooksFont';
+            src: url('booksfont.ttf') format('truetype'); 
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        :root { --primary: #10b981; --bg: #f3f4f6; --card: #ffffff; }
+        body { 
+            font-family: 'BooksFont', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg); 
             color: #1f2937; 
-            line-height: 1.5;
-            min-height: 100vh;
+            margin: 0; 
+            padding: 20px; 
             display: flex; 
-            padding: 20px;
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh; 
         }
 
         /* الهيكل الرئيسي - Grid للشاشات الكبيرة */
