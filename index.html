@@ -14,20 +14,17 @@
             color: #1f2937; 
             margin: 0; 
             padding: 20px; 
-            /* **التعديل هنا:** استخدام Flexbox مع اتجاه عمودي للتوسيط والترتيب */
             display: flex; 
             flex-direction: column; 
-            align-items: center; /* لتوسيط المحتوى أفقياً */
-            min-height: 100vh; /* لضمان ملء الشاشة عمودياً */
+            align-items: center; 
+            min-height: 100vh; 
         }
         .container { 
             background-color: var(--card); 
             padding: 2.5rem; 
             border-radius: 15px; 
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); 
-            /* **التعديل هنا:** إزالة width: 100%; إذا كان سيتعارض مع التوسيط */
             max-width: 700px;
-            /* **التعديل هنا:** للتأكيد على التوسيط الأفقي وضبط الهوامش */
             margin: 20px auto; 
             animation: fadeIn 0.5s ease-out;
         }
@@ -99,17 +96,23 @@
         .error { background-color: #fee2e2; color: #991b1b; border-color: #f87171; }
         .info { font-size: 0.9rem; color: #6b7280; margin-top: -5px; margin-bottom: 10px; padding: 5px 0; }
         /* أنماط المعاينة */
+        /* التعديل: يتم تعريف الخط هنا لاستخدامه افتراضياً */
+        @font-face {
+            font-family: 'BooksFont';
+            src: url('booksfont.ttf') format('truetype'); /* تأكد أن booksfont.ttf في نفس المجلد */
+            font-weight: normal;
+            font-style: normal;
+        }
         #fontPreviewTextAr, #fontPreviewTextEn {
             /* الخط الأساسي للمعاينة قبل التحميل */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: 'BooksFont', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
         }
         /* تنسيق زر الانتقال */
         .txt-cleaner-button-wrapper {
-            /* **التعديل هنا:** تم إزالة التوسيط اليدوي حيث أصبح body يقوم به */
             margin-top: 40px; 
-            padding-bottom: 20px; /* إضافة مسافة سفلية */
+            padding-bottom: 20px; 
             width: 100%; 
-            max-width: 700px; /* ليتطابق عرضه مع عرض الـ container تقريباً */
+            max-width: 700px; 
         }
         .txt-cleaner-button {
             background: #8BC34A; 
@@ -119,16 +122,14 @@
             border: none; 
             font-size: 16px; 
             cursor: pointer;
-            display: block; /* ليتصرف ككتلة ويملأ المساحة المتاحة */
-            margin: 0 auto; /* للتوسيط الذاتي إذا لزم الأمر */
-            max-width: 300px; /* يمكن تحديد عرض أصغر للزر نفسه */
+            display: block; 
+            margin: 0 auto; 
+            max-width: 300px; 
         }
 
     </style>
 </head>
-<body>
-
-<div class="container">
+<body onload="setupDefaultFont()"> <div class="container">
     <h1>📚محرر epub</h1>
     <p class="info" style="text-align: center; font-size: 1rem; color: var(--primary);">أداة لتعديل بيانات، غلاف، وخطوط أي كتاب EPUB.</p>
 
@@ -171,6 +172,7 @@
     <div class="section">
         <label for="fontFile">5. إجبار الكتاب على استخدام خط خارجي (اختياري)</label>
         <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" onchange="previewFont()">
+        <p class="info">**الخط الافتراضي المُحدد: booksfont.ttf.** لتحرير الكتاب بهذا الخط، لا تختر أي ملف هنا.</p>
         <div id="fontPreviewContainer" style="margin-top: 15px; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; text-align: center; display: none;">
             <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 10px;">معاينة الخط المُختار:</p>
             <p id="fontPreviewTextAr" style="font-size: 1.8rem; direction: rtl; margin-bottom: 10px;">«عندما تلعب لُعبة العروش، إمَّا أن تربح أو تموت»</p>
@@ -189,6 +191,44 @@
     </button>
 </div>
 <script>
+    
+    // --- متغير لحفظ ملف الخط الافتراضي ---
+    let defaultFontFile = null;
+
+    // دالة محاكاة تحميل ملف الخط booksfont.ttf
+    // **ملاحظة:** هذا يعتمد على وجود ملف booksfont.ttf في نفس مجلد ملف HTML.
+    function setupDefaultFont() {
+        fetch('booksfont.ttf')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("لم يتم العثور على ملف booksfont.ttf.");
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // إنشاء كائن File وهمي
+                defaultFontFile = new File([blob], 'booksfont.ttf', { type: blob.type || 'font/ttf' });
+                // تفعيل المعاينة لتبدأ بالخط الافتراضي
+                showDefaultPreview();
+            })
+            .catch(e => {
+                console.error("خطأ في تحميل الخط الافتراضي booksfont.ttf:", e.message);
+                showStatus(`لم يتم تحميل الخط الافتراضي booksfont.ttf. يجب اختياره يدوياً.`, 'error');
+            });
+    }
+
+    // دالة لعرض معاينة الخط الافتراضي
+    function showDefaultPreview() {
+        const container = document.getElementById('fontPreviewContainer');
+        const textAr = document.getElementById('fontPreviewTextAr');
+        const textEn = document.getElementById('fontPreviewTextEn');
+        
+        container.style.display = 'block';
+        textAr.style.fontFamily = `'BooksFont', sans-serif`;
+        textEn.style.fontFamily = `'BooksFont', sans-serif`;
+    }
+
+
     // --- الدوال المساعدة (Helper Functions) ---
 
     function showStatus(msg, type) {
@@ -226,10 +266,9 @@
         const textEn = document.getElementById('fontPreviewTextEn');
 
         if (!fontInput.files[0]) {
-            container.style.display = 'none';
-            // إعادة تعيين الخطوط إلى الافتراضي عند إزالة الملف
-            textAr.style.fontFamily = 'inherit';
-            textEn.style.fontFamily = 'inherit';
+            // العودة للخط الافتراضي
+            showDefaultPreview();
+            
             // إزالة أي نمط (Style) تم إنشاؤه سابقاً
             const oldStyle = document.getElementById('live-font-style');
             if (oldStyle) oldStyle.remove();
@@ -278,6 +317,9 @@
         const epubInput = document.getElementById('epubFile');
         const coverInput = document.getElementById('coverFile');
         const fontInput = document.getElementById('fontFile');
+        // استخدام الخط الافتراضي إذا لم يختر المستخدم ملفاً
+        const fontToUse = fontInput.files[0] || defaultFontFile;
+        
         const titleInput = document.getElementById('bookTitle').value;
         const authorInput = document.getElementById('bookAuthor').value;
         const languageInput = document.getElementById('bookLanguage').value.trim().toLowerCase();
@@ -384,12 +426,10 @@
             // إعداد قاعدة الخط الأساسية (إذا تم إدخال خط)
             let fontFaceRule = null;
             let fontUrlRelative = null;
-            // المتغيرات مُعرَّفة بالخارج (Fix for fontFullPath is not defined)
-            let fontFile = null;
             let fontFullPath = null; 
 
-            if (fontInput.files[0]) {
-                fontFile = fontInput.files[0]; 
+            if (fontToUse) { // استخدام fontToUse بدلاً من fontInput.files[0]
+                const fontFile = fontToUse;
                 const fontFileName = "custom-font." + fontFile.name.split('.').pop();
                 const fontsDir = opfDir ? opfDir + "/fonts/" : "fonts/";
                 fontFullPath = fontsDir + fontFileName; 
@@ -405,9 +445,10 @@
 
                 fontUrlRelative = getRelativePath(opfDir ? opfDir + '/temp.css' : 'temp.css', fontFullPath); 
 
-                // **** التعديل لزيادة قوة النمط (إضافة المُحدّد الشامل *) ****
-                fontFaceRule = `@font-face { font-family: 'UserCustomFont'; src: url('${fontUrlRelative}') format('opentype'), url('${fontUrlRelative}') format('truetype'); font-weight: normal; font-style: normal; } *, body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, blockquote, dd, dt { font-family: 'UserCustomFont', sans-serif !important; line-height: 1.7 !important; }`;
-                // ******************************************************
+                const fontName = (fontFile.name === 'booksfont.ttf') ? 'BooksFont' : 'UserCustomFont';
+                
+                fontFaceRule = `@font-face { font-family: '${fontName}'; src: url('${fontUrlRelative}') format('opentype'), url('${fontUrlRelative}') format('truetype'); font-weight: normal; font-style: normal; } *, body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, blockquote, dd, dt { font-family: '${fontName}', sans-serif !important; line-height: 1.7 !important; }`;
+                
 
                 // تطبيق قاعدة الخط على ملفات CSS
                 for (let cssHref of cssFiles) {
@@ -462,15 +503,15 @@
 
                     // تطبيق الخط (إذا تم اختياره)
                     if (fontFaceRule && headEl && bodyEl) {
-                        // الآن، fontFullPath و fontUrlRelative مُعرَّفان (وليس undefined) لأن fontFaceRule حقيقية
                         let finalFontStyle = fontStyleToInject.replace(fontUrlRelative, getRelativePath(fullXhtmlPath, fontFullPath));
 
                         // تجنب حقن النمط إذا كان موجوداً بالفعل (كإجراء احترازي)
-                        if (!headEl.innerHTML.includes('UserCustomFont')) {
+                        if (!headEl.innerHTML.includes('UserCustomFont') && !headEl.innerHTML.includes('BooksFont')) {
                             headEl.insertAdjacentHTML('beforeend', finalFontStyle);
                         }
                         // تطبيق النمط على body (لضمان تجاوز التنسيقات الأصلية)
-                        bodyEl.setAttribute('style', "font-family: 'UserCustomFont', sans-serif !important;");
+                        const fontName = (fontFile.name === 'booksfont.ttf') ? 'BooksFont' : 'UserCustomFont';
+                        bodyEl.setAttribute('style', `font-family: '${fontName}', sans-serif !important;`);
                     }
 
                     zip.file(fullXhtmlPath, serializer.serializeToString(xhtmlDoc));
