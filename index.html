@@ -187,6 +187,7 @@
             <option value="none" data-type="none">-- لا تغيير على الخطوط (افتراضي) --</option>
 
             <option value="AmjadFont" data-type="local">خط الموقع المخصص للكتب (يُفضَّل)</option>
+<option value="ScheherazadeNew-Bold" data-type="local">خط  شهرزاد نيو غامق (ScheherazadeNew-Bold)</option>
 
             <option value="Cairo" data-type="google">خط القاهرة (Cairo)</option>
             <option value="Tajawal" data-type="google">خط تجوال (Tajawal)</option>
@@ -224,7 +225,12 @@
     const LOCAL_FONT_INFO = {
         'AmjadFont': {
             fileName: 'booksfont.ttf', 
-            localPath: 'booksfont.ttf', // مسار الخط المحلي في نظام الملفات الخارجي
+            localPath: 'booksfont.ttf', //
+            mime: 'font/ttf'
+        }
+'ScheherazadeNew-Bold': {
+            fileName: 'ScheherazadeNew-Bold.ttf', 
+            localPath: 'ScheherazadeNew-Bold.ttf', // 
             mime: 'font/ttf'
         }
     };
